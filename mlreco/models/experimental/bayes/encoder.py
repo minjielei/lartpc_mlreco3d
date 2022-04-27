@@ -168,8 +168,10 @@ class MCDropoutEncoder(torch.nn.Module):
         encoderOutput = self.encoder(x)
         encoderTensors = encoderOutput['encoderTensors']
         finalTensor = encoderOutput['finalTensor']
-
+        assert not torch.isnan(finalTensor.F).any()
+        print(finalTensor)
         z = self.pool(finalTensor)
+        assert not torch.isnan(z.F).any()
         latent = self.linear1(z)
-
+        assert not torch.isnan(latent.F).any()
         return latent.F

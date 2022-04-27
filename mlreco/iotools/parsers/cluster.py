@@ -644,6 +644,7 @@ def parse_cluster3d_clean_full(data):
     # and give labels -1 to all voxels of class 4 and above
     grp_data[:,-1] = img_data[:,-1]
     grp_data[img_data[:,-1] > 3,1:5] = -1
+
     return grp_voxels, grp_data
 
 
@@ -679,3 +680,104 @@ def parse_cluster3d_scales(data):
         scale_data = grp_data[unique_indices]
         scales.append((scale_voxels, scale_data))
     return scales
+
+def parse_cluster3d_mpv(data):
+    """
+    a function to retrieve a 3D clusters tensor masking on mpv events
+    
+    .. code-block:: yaml
+    
+        schema:
+          cluster_label:
+            - parse_cluster3d_mpv
+            - cluster3d_pcluster
+            - particle_corrected
+            
+    Configuration
+    -------------
+    cluster3d_pcluster: larcv::EventClusterVoxel3D
+    particle_mpv: larcv::EventParticle, optional
+        To determine neutrino vs cosmic labels
+        
+    Returns
+    -------
+    np_voxels: np.ndarray
+        a numpy array with the shape (n,3) where 3 represents (x,y,z)
+        coordinate
+    np_features: np.ndarray
+        a numpy array with the shape (n,4) where 4 is voxel value,
+        cluster id, group id, pdg, respectively
+    """
+    
+    cluster_event = data[0]
+    particles_v = data[1].as_vector()
+    meta = cluster_event.meta()
+    num_clusters = cluster_event.as_vector().size()
+    clusters_voxels, clusters_features = [], []
+    particle_mpv = None
+    if len(data) > 2:
+        particle_mpv = data[2].as_vector()
+        
+    from mlreco.utils.groups import get_interaction_id, get_nu_id
+    group_ids = np.array([p.group_id() for p in particles_v])
+    inter_ids = get_interaction_id(particles_v)
+    nu_ids    = get_nu_id(cluster_event, particles_v, inter_ids, particle_mpv = particle_mpv)
+    
+    for i in range(num_clusters):
+        cluster = cluster_event.as_vector()[i]
+        num_points = cluster.as_vector().size()
+        if num_points > 0:
+            x = np.empty(shape=(num_points,), dtype=np.int32)
+            y = np.empty(shape=(num_points,), dtype=np.int32)
+            z = np.empty(shape=(num_points,), dtype=np.int32)
+            value = np.empty(shape=(num_points,), dtype=np.float32)
+            larcv.as_flat_arrays(cluster,meta,x, y, z, value)
+            assert i == particles_v[i].id()
+            nu_id = np.full(shape=(cluster.as_vector().size()),
+                            fill_value=nu_ids[i], dtype=np.float32)
+            clusters_voxels.append(np.stack([x, y, z], axis=1))
+            clusters_features.append(np.column_stack([value, nu_id]))
+    np_voxels   = np.concatenate(clusters_voxels, axis=0, dtype=np.int32)
+    np_features = np.concatenate(clusters_features, axis=0, dtype=np.float32)
+    mask = np_features[:, 1] == 1
+    return np_voxels[mask, :], np_features[mask, :1]
+
+def parse_cluster3d_mpv_energy(data):
+    """
+    Get total initial energy of primary particles
+    .. code-block:: yaml
+        schema:
+          cluster_label:
+            - parse_cluster3d_kinematics
+            - cluster3d_pcluster
+            - particle_pcluster
+            - particle_mpv
+    Returns
+    -------
+    np.ndarray
+        List of true initial energy for each iamge in TTree.
+    """
+    cluster_event = data[0]
+    particles_v = data[1].as_vector()
+    particles_v_asis = parse_particle_asis([data[1], data[0]])
+
+    meta = cluster_event.meta()
+    num_clusters = cluster_event.as_vector().size()
+    clusters_voxels, clusters_features = [], []
+    particle_mpv = None
+    if len(data) > 2:
+        particle_mpv = data[2].as_vector()
+        
+    from mlreco.utils.groups import get_interaction_id, get_nu_id
+    inter_ids = get_interaction_id(particles_v)
+    nu_ids    = get_nu_id(cluster_event, particles_v, inter_ids, particle_mpv = particle_mpv)
+    
+    energy = 0
+    for i in range(num_clusters):
+        cluster = cluster_event.as_vector()[i]
+        num_points = cluster.as_vector().size()
+        is_primary = (nu_ids[i] > 0) and (particles_v[i].group_id() == particles_v[i].parent_id())
+        if num_points > 0 and is_primary:
+            energy += particles_v[i].energy_init()
+            
+    return np.array([energy], dtype=np.float32)

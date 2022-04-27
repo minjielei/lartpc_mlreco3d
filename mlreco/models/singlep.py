@@ -17,6 +17,7 @@ class ParticleImageClassifier(nn.Module):
 
     def __init__(self, cfg, name='particle_image_classifier'):
         super(ParticleImageClassifier, self).__init__()
+        # setup_cnn_configuration(self, cfg, 'network_base')
         self.encoder_type = cfg[name].get('encoder_type', 'standard')
         if self.encoder_type == 'dropout':
             self.encoder = MCDropoutEncoder(cfg)

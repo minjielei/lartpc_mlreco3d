@@ -14,6 +14,7 @@ def model_dict():
     from . import uresnet_ppn_chain
     from . import spice
     from . import singlep
+    from . import multip
     from . import graph_spice
     from . import bayes_uresnet
 
@@ -51,7 +52,9 @@ def model_dict():
         # Deep Single Pass Uncertainty Quantification
         'duq_singlep': (singlep.DUQParticleClassifier, singlep.MultiLabelCrossEntropy),
         # Vertex PPN
-        'vertex_ppn': (vertex.VertexPPNChain, vertex.UResNetVertexLoss)
+        'vertex_ppn': (vertex.VertexPPNChain, vertex.UResNetVertexLoss),
+        # mpv energy regression
+        'mpv_energy': (multip.EnergyRegressor, multip.EnergyL1Loss)
     }
     return models
 
