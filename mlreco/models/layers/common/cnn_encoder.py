@@ -19,6 +19,7 @@ class SparseResidualEncoder(UResNetEncoder):
     def __init__(self, cfg, name='res_encoder'):
         #print("RESENCODER = ", cfg)
         super(SparseResidualEncoder, self).__init__(cfg, name=name)
+        setup_cnn_configuration(self, cfg, 'network_base')
 
         self.model_config = cfg.get(name, {})
         self.latent_size = self.model_config.get('latent_size', 512)
@@ -61,7 +62,6 @@ class SparseResidualEncoder(UResNetEncoder):
         self.linear1 = ME.MinkowskiLinear(self.nPlanes[-1], self.latent_size)
 
     def forward(self, input_tensor):
-
         # print(input_tensor)
         features = input_tensor[:, -1].view(-1, 1)
         if self.coordConv:
@@ -70,7 +70,7 @@ class SparseResidualEncoder(UResNetEncoder):
             features = torch.cat([normalized_coords, features], dim=1)
 
         x = ME.SparseTensor(coordinates=input_tensor[:, :4].int(),
-                            features=features)
+                            features=features.float())
         # Encoder
         encoderOutput = self.encoder(x)
         encoderTensors = encoderOutput['encoderTensors']

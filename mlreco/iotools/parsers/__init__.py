@@ -123,5 +123,6 @@ from mlreco.iotools.parsers.cluster import (
     parse_cluster3d_clean_full,
     parse_cluster3d_scales,
     parse_cluster3d_mpv,
-    parse_cluster3d_mpv_energy
+    parse_cluster3d_mpv_einit,
+    parse_cluster3d_mpv_edep
 )

@@ -161,17 +161,18 @@ class MCDropoutEncoder(torch.nn.Module):
 
 
     def forward(self, input_tensor):
+        features = input_tensor[:, -1].view(-1, 1)
+        if self.coordConv:
+            normalized_coords = (input_tensor[:, 1:4] - float(self.spatial_size) / 2) \
+                    / (float(self.spatial_size) / 2)
+            features = torch.cat([normalized_coords, features], dim=1)
 
         x = ME.SparseTensor(coordinates=input_tensor[:, :4].int(),
-                            features=input_tensor[:, -1].view(-1, 1).float())
+                            features=features.float())
         # Encoder
         encoderOutput = self.encoder(x)
         encoderTensors = encoderOutput['encoderTensors']
         finalTensor = encoderOutput['finalTensor']
-        assert not torch.isnan(finalTensor.F).any()
-        print(finalTensor)
         z = self.pool(finalTensor)
-        assert not torch.isnan(z.F).any()
         latent = self.linear1(z)
-        assert not torch.isnan(latent.F).any()
         return latent.F

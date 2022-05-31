@@ -734,15 +734,17 @@ def parse_cluster3d_mpv(data):
             larcv.as_flat_arrays(cluster,meta,x, y, z, value)
             assert i == particles_v[i].id()
             nu_id = np.full(shape=(cluster.as_vector().size()),
-                            fill_value=nu_ids[i], dtype=np.float32)
+                            fill_value=nu_ids[i], dtype=np.int32)
             clusters_voxels.append(np.stack([x, y, z], axis=1))
             clusters_features.append(np.column_stack([value, nu_id]))
     np_voxels   = np.concatenate(clusters_voxels, axis=0, dtype=np.int32)
     np_features = np.concatenate(clusters_features, axis=0, dtype=np.float32)
-    mask = np_features[:, 1] == 1
+    mask = np_features[:, 1] > 0
+    if not any(mask):
+        return np.empty((0, 3), dtype=np.int32), np.empty((0, 1), dtype=np.float32)
     return np_voxels[mask, :], np_features[mask, :1]
 
-def parse_cluster3d_mpv_energy(data):
+def parse_cluster3d_mpv_einit(data):
     """
     Get total initial energy of primary particles
     .. code-block:: yaml
@@ -755,15 +757,13 @@ def parse_cluster3d_mpv_energy(data):
     Returns
     -------
     np.ndarray
-        List of true initial energy for each iamge in TTree.
+        List of true initial energy for each image in TTree.
     """
     cluster_event = data[0]
     particles_v = data[1].as_vector()
-    particles_v_asis = parse_particle_asis([data[1], data[0]])
 
     meta = cluster_event.meta()
     num_clusters = cluster_event.as_vector().size()
-    clusters_voxels, clusters_features = [], []
     particle_mpv = None
     if len(data) > 2:
         particle_mpv = data[2].as_vector()
@@ -779,5 +779,25 @@ def parse_cluster3d_mpv_energy(data):
         is_primary = (nu_ids[i] > 0) and (particles_v[i].group_id() == particles_v[i].parent_id())
         if num_points > 0 and is_primary:
             energy += particles_v[i].energy_init()
+            
+    return np.array([energy], dtype=np.float32)
+
+def parse_cluster3d_mpv_edep(data):
+    """
+    Get total initial energy of primary particles
+    .. code-block:: yaml
+        schema:
+          cluster_label:
+            - parse_cluster3d_kinematics
+            - cluster3d_pcluster
+            - particle_pcluster
+            - particle_mpv
+    Returns
+    -------
+    np.ndarray
+        List of true initial energy for each image in TTree.
+    """
+    np_voxels, np_features = parse_cluster3d_mpv(data)
+    energy = np_features[:, 0].sum()
             
     return np.array([energy], dtype=np.float32)

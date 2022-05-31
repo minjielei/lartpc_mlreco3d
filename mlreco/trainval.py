@@ -234,9 +234,7 @@ class trainval(object):
                     print(msg % self._trainval_config['unwrapper'])
                     raise ImportError
                 # print(input_data['index'])
-                import numpy as np
-                print(np.count_nonzero(np.isnan(input_data['input_data'][0])))
-                print(res['loss'])
+                
                 input_data, res = unwrapper(input_data, res, avoid_keys=concat_keys)
             else:
                 if 'index' in input_data:

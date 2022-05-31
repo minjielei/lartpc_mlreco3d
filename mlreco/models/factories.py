@@ -54,7 +54,9 @@ def model_dict():
         # Vertex PPN
         'vertex_ppn': (vertex.VertexPPNChain, vertex.UResNetVertexLoss),
         # mpv energy regression
-        'mpv_energy': (multip.EnergyRegressor, multip.EnergyL1Loss)
+        'mpv_energy': (multip.EnergyRegressor, multip.EnergyMSELoss),
+        # mpv energy regression with quantile predictions
+        'energy_quantile': (multip.EnergyRegressor, multip.QuantilePinballLoss)
     }
     return models
 
